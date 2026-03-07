@@ -1,6 +1,7 @@
-
+import { Suspense } from 'react';
 import ResetPasswordForm from '@/app/components/auth/ResetPasswordForm';
 import { Baby } from 'lucide-react';
+
 
 export default function ResetPasswordPage() {
   return (
@@ -16,7 +17,9 @@ export default function ResetPasswordPage() {
           <p className="text-gray-600">Enter your new password</p>
         </div>
 
-        <ResetPasswordForm/>
+        <Suspense fallback={<div>Loading...</div>}>
+          <ResetPasswordForm />
+        </Suspense>
       </div>
     </div>
   );
