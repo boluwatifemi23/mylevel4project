@@ -5,7 +5,7 @@ import { AppError, handleError } from '@/lib/utils/error';
 import { Follow } from '@/models/Follow';
 
 export async function GET(
-  _request: Request,
+ _: Request,
   context: { params: Promise<{ userId: string }> }
 ) {
   try {
