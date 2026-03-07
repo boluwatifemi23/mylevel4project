@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyToken } from './lib/auth/jwt';
 
 const publicRoutes = ['/', '/login', '/signup', '/forgot-password', '/reset-password'];
 const authRoutes = ['/login', '/signup'];
 
-export function proxy(request: NextRequest) {
+export function proxy(request: NextRequest) { 
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get('auth_token')?.value;
+  const session = request.cookies.get('session')?.value; 
 
   const isPublicRoute = publicRoutes.some((route) =>
     pathname.startsWith(route)
@@ -16,16 +15,7 @@ export function proxy(request: NextRequest) {
     pathname.startsWith(route)
   );
 
-  let isAuthenticated = false;
-
-  if (token) {
-    try {
-      verifyToken(token);
-      isAuthenticated = true;
-    } catch {
-      isAuthenticated = false;
-    }
-  }
+  const isAuthenticated = !!session;
 
   if (isAuthRoute && isAuthenticated) {
     return NextResponse.redirect(new URL('/feed', request.url));
