@@ -7,6 +7,8 @@ import { User } from "@/models/User";
 import Navbar from "./components/shared/Navbar";
 import ToastProvider from "./components/providers/ToastProvider";
 
+export const dynamic = 'force-dynamic';
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
