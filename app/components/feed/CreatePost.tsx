@@ -2,9 +2,11 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
-import { Image as ImageIcon, Video as VideoIcon, X, Loader, Smile, Globe, Users, Lock } from "lucide-react";
+import {
+  Image as ImageIcon, Video as VideoIcon, X,
+  Loader, Smile, Globe, Users, Lock, ChevronDown,
+} from "lucide-react";
 import toast from "react-hot-toast";
-import Button from "../shared/Button";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 
@@ -14,347 +16,247 @@ interface CreatePostProps {
   userDisplayName: string;
 }
 
-interface MediaItem {
-  url: string;
-  type: "image" | "video";
-}
-
-interface EmojiData {
-  native: string;
-}
-
+interface MediaItem { url: string; type: "image" | "video" }
+interface EmojiData { native: string }
 type VisibilityType = "public" | "followers" | "private";
 
-export default function CreatePost({
-  onPostCreated,
-  userProfileImage,
-  userDisplayName,
-}: CreatePostProps) {
-  const [content, setContent] = useState<string>("");
+const visibilityOptions = [
+  { value: "public" as VisibilityType, icon: Globe, label: "Public", desc: "Anyone can see this" },
+  { value: "followers" as VisibilityType, icon: Users, label: "Followers", desc: "Only your followers" },
+  { value: "private" as VisibilityType, icon: Lock, label: "Private", desc: "Only you" },
+];
+
+export default function CreatePost({ onPostCreated, userProfileImage, userDisplayName }: CreatePostProps) {
+  const [content, setContent] = useState("");
   const [media, setMedia] = useState<MediaItem[]>([]);
-  const [isUploading, setIsUploading] = useState<boolean>(false);
-  const [isPosting, setIsPosting] = useState<boolean>(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isPosting, setIsPosting] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [visibility, setVisibility] = useState<VisibilityType>("public");
   const [showVisibilityMenu, setShowVisibilityMenu] = useState(false);
-  
+  const [focused, setFocused] = useState(false);
+
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const visibilityOptions = [
-    { value: "public" as VisibilityType, icon: Globe, label: "Public", description: "Anyone can see this" },
-    { value: "followers" as VisibilityType, icon: Users, label: "Followers", description: "Only your followers" },
-    { value: "private" as VisibilityType, icon: Lock, label: "Private", description: "Only you can see this" },
-  ];
+  const currentVis = visibilityOptions.find(v => v.value === visibility)!;
+  const VisIcon = currentVis.icon;
 
   const handleEmojiSelect = (emoji: EmojiData) => {
-    const cursorPosition = textareaRef.current?.selectionStart || content.length;
-    const newContent = content.slice(0, cursorPosition) + emoji.native + content.slice(cursorPosition);
-    setContent(newContent);
+    const pos = textareaRef.current?.selectionStart || content.length;
+    setContent(content.slice(0, pos) + emoji.native + content.slice(pos));
     setShowEmojiPicker(false);
-    
-    
     setTimeout(() => {
       textareaRef.current?.focus();
-      textareaRef.current?.setSelectionRange(cursorPosition + emoji.native.length, cursorPosition + emoji.native.length);
+      const newPos = pos + emoji.native.length;
+      textareaRef.current?.setSelectionRange(newPos, newPos);
     }, 100);
   };
 
-  const handleMediaUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-    type: "image" | "video"
-  ) => {
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "image" | "video") => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
-
+    if (!files?.length) return;
     setIsUploading(true);
-    const uploadToast = toast.loading(`Uploading ${type}s...`);
-
+    const t = toast.loading(`Uploading ${type}s...`);
     try {
-      const uploadPromises = Array.from(files).map(async (file) => {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          credentials: 'include',
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Upload failed");
-        }
-
-        const data: { url: string } = await response.json();
-        return { url: data.url, type };
-      });
-
-      const uploadedMedia = await Promise.all(uploadPromises);
-      setMedia((prev) => [...prev, ...uploadedMedia]);
-      toast.dismiss(uploadToast);
+      const uploads = await Promise.all(
+        Array.from(files).map(async (file) => {
+          const fd = new FormData();
+          fd.append("file", file);
+          const res = await fetch("/api/upload", { method: "POST", credentials: "include", body: fd });
+          if (!res.ok) throw new Error((await res.json()).error || "Upload failed");
+          const d: { url: string } = await res.json();
+          return { url: d.url, type };
+        })
+      );
+      setMedia(prev => [...prev, ...uploads]);
+      toast.dismiss(t);
       toast.success(`${type === "image" ? "Images" : "Videos"} uploaded!`);
-    } catch (error) {
-      toast.dismiss(uploadToast);
-      toast.error(`Failed to upload ${type}s`);
-      console.error(error);
+    } catch {
+      toast.dismiss(t);
+      toast.error(`Failed to upload ${type}`);
     } finally {
       setIsUploading(false);
       if (e.target) e.target.value = '';
     }
   };
 
-  const removeMedia = (index: number) => {
-    setMedia((prev) => prev.filter((_, i) => i !== index));
-  };
-
   const handleSubmit = async () => {
-    if (!content.trim() && media.length === 0) {
-      toast.error("Please add some content or media");
-      return;
-    }
-
+    if (!content.trim() && media.length === 0) { toast.error("Add some content or media"); return; }
     setIsPosting(true);
-    const postingToast = toast.loading("Creating post...");
-
+    const t = toast.loading("Creating post...");
     try {
-      const images = media.filter((m) => m.type === "image").map((m) => m.url);
-      const videos = media.filter((m) => m.type === "video").map((m) => m.url);
-
-      const response = await fetch("/api/posts", {
+      const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: 'include',
+        credentials: "include",
         body: JSON.stringify({
           content,
-          images,
-          videos,
+          images: media.filter(m => m.type === "image").map(m => m.url),
+          videos: media.filter(m => m.type === "video").map(m => m.url),
           type: "update",
           visibility,
         }),
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create post");
-      }
-
-      toast.dismiss(postingToast);
+      if (!res.ok) throw new Error();
+      toast.dismiss(t);
       toast.success("Post created! 🎉");
-      setContent("");
-      setMedia([]);
-      setVisibility("public");
+      setContent(""); setMedia([]); setVisibility("public"); setFocused(false);
       onPostCreated?.();
-    } catch (error) {
-      toast.dismiss(postingToast);
+    } catch {
+      toast.dismiss(t);
       toast.error("Failed to create post");
-      console.error(error);
     } finally {
       setIsPosting(false);
     }
   };
 
-  const currentVisibility = visibilityOptions.find(v => v.value === visibility);
-  const VisibilityIcon = currentVisibility?.icon || Globe;
-
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 relative">
-      <div className="flex items-start space-x-4">
-        <div className="w-12 h-12 bg-linear-to-br from-pink-400 to-purple-400 rounded-full overflow-hidden shrink-0">
-          {userProfileImage ? (
-            <Image
-              src={userProfileImage}
-              alt={userDisplayName}
-              width={48}
-              height={48}
-              className="rounded-full object-cover"
+    <div className={`bg-white rounded-2xl border transition-all duration-200 ${focused ? "border-pink-200 shadow-md" : "border-gray-100 shadow-sm"}`}>
+      <div className="p-4">
+        <div className="flex items-start gap-3">
+         
+          <div className="w-9 h-9 bg-linear-to-br from-pink-400 to-purple-500 rounded-full overflow-hidden shrink-0 flex items-center justify-center ring-2 ring-white shadow-sm">
+            {userProfileImage ? (
+              <Image src={userProfileImage} alt={userDisplayName} width={36} height={36} className="rounded-full object-cover w-full h-full" />
+            ) : (
+              <span className="text-white font-bold text-sm">{userDisplayName.charAt(0)}</span>
+            )}
+          </div>
+
+          
+          <div className="flex-1 min-w-0">
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              onFocus={() => setFocused(true)}
+              placeholder="What's on your mind?"
+              className="w-full border-none outline-none resize-none text-gray-800 placeholder-gray-400 text-sm leading-relaxed bg-transparent"
+              rows={focused || content ? 3 : 1}
             />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <span className="text-white font-semibold">
-                {userDisplayName.charAt(0)}
-              </span>
-            </div>
-          )}
+          </div>
         </div>
 
-        <div className="flex-1">
-          <label htmlFor="post-content" className="sr-only">Post content</label>
-          <textarea
-            id="post-content"
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="What's on your mind?"
-            className="w-full border-none outline-none resize-none text-gray-700 placeholder-gray-400 text-lg"
-            rows={3}
-            aria-label="Post content"
-          />
-
-          {media.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-              {media.map((item: MediaItem, index: number) => (
-                <div key={`${item.url}-${index}`} className="relative group">
-                  {item.type === "image" ? (
-                    <Image
-                      src={item.url}
-                      alt={`Upload ${index + 1}`}
-                      width={300}
-                      height={200}
-                      className="w-full h-32 object-cover rounded-xl"
-                    />
-                  ) : (
-                    <video
-                      src={item.url}
-                      className="w-full h-32 object-cover rounded-xl"
-                      controls
-                    />
-                  )}
-                  <button
-                    type="button"
-                    aria-label={`Remove ${item.type} ${index + 1}`}
-                    title="Remove media"
-                    onClick={() => removeMedia(index)}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-            <div className="flex items-center space-x-2">
-              
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) => handleMediaUpload(e, "image")}
-                className="hidden"
-                aria-label="Upload photos"
-              />
-              <button
-                type="button"
-                onClick={() => imageInputRef.current?.click()}
-                disabled={isUploading}
-                className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition disabled:opacity-50"
-                title="Add photos"
-                aria-label="Add photos"
-              >
-                {isUploading ? (
-                  <Loader className="w-5 h-5 animate-spin" />
+        {/* Media preview */}
+        {media.length > 0 && (
+          <div className={`grid gap-1.5 mt-3 ${media.length === 1 ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3"}`}>
+            {media.map((item, i) => (
+              <div key={i} className="relative group rounded-xl overflow-hidden bg-gray-100">
+                {item.type === "image" ? (
+                  <Image src={item.url} alt={`Upload ${i + 1}`} width={300} height={200} className="w-full h-28 object-cover" />
                 ) : (
-                  <ImageIcon className="w-5 h-5" />
+                  <video src={item.url} className="w-full h-28 object-cover" controls />
                 )}
-              </button>
-
-             
-              <input
-                ref={videoInputRef}
-                type="file"
-                accept="video/*"
-                multiple
-                onChange={(e) => handleMediaUpload(e, "video")}
-                className="hidden"
-                aria-label="Upload videos"
-              />
-              <button
-                type="button"
-                onClick={() => videoInputRef.current?.click()}
-                disabled={isUploading}
-                className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition disabled:opacity-50"
-                title="Add videos"
-                aria-label="Add videos"
-              >
-                <VideoIcon className="w-5 h-5" />
-              </button>
-
-              
-              <div className="relative">
                 <button
-                  type="button"
-                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
-                  title="Add emoji"
-                  aria-label="Add emoji"
+                title="o"
+                  onClick={() => setMedia(prev => prev.filter((_, idx) => idx !== i))}
+                  className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
                 >
-                  <Smile className="w-5 h-5" />
+                  <X className="w-3 h-3" />
                 </button>
-                {showEmojiPicker && (
-                  <div className="absolute bottom-full left-0 mb-2 z-50">
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setShowEmojiPicker(false)}
-                        className="absolute -top-2 -right-2 bg-gray-800 text-white rounded-full p-1 z-10"
-                        aria-label="Close emoji picker"
-                        title="Close"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                      <Picker data={data} onEmojiSelect={handleEmojiSelect} theme="light" />
-                    </div>
-                  </div>
-                )}
               </div>
+            ))}
+          </div>
+        )}
 
-             
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowVisibilityMenu(!showVisibilityMenu)}
-                  className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
-                  title={`Post visibility: ${currentVisibility?.label}`}
-                  aria-label={`Post visibility: ${currentVisibility?.label}`}
-                >
-                  <VisibilityIcon className="w-5 h-5" />
-                  <span className="text-sm">{currentVisibility?.label}</span>
-                </button>
-                
-                {showVisibilityMenu && (
-                  <div className="absolute bottom-full left-0 mb-2 bg-white rounded-xl shadow-xl border border-gray-200 p-2 min-w-64 z-50">
-                    {visibilityOptions.map((option) => {
-                      const Icon = option.icon;
+        
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
+          <div className="flex items-center gap-1">
+            
+            <input
+            title="o"
+             ref={imageInputRef} type="file" accept="image/*" multiple onChange={e => handleMediaUpload(e, "image")} className="hidden" />
+            <button
+              onClick={() => imageInputRef.current?.click()}
+              disabled={isUploading}
+              className="p-2 rounded-xl text-gray-400 hover:text-pink-500 hover:bg-pink-50 transition disabled:opacity-40"
+              title="Add photos"
+            >
+              {isUploading ? <Loader className="w-5 h-5 animate-spin" /> : <ImageIcon className="w-5 h-5" />}
+            </button>
+
+            
+            <input
+            title="o"
+             ref={videoInputRef} type="file" accept="video/*" multiple onChange={e => handleMediaUpload(e, "video")} className="hidden" />
+            <button
+              onClick={() => videoInputRef.current?.click()}
+              disabled={isUploading}
+              className="p-2 rounded-xl text-gray-400 hover:text-pink-500 hover:bg-pink-50 transition disabled:opacity-40"
+              title="Add video"
+            >
+              <VideoIcon className="w-5 h-5" />
+            </button>
+
+           
+            <div className="relative">
+              <button
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                className="p-2 rounded-xl text-gray-400 hover:text-pink-500 hover:bg-pink-50 transition"
+                title="Add emoji"
+              >
+                <Smile className="w-5 h-5" />
+              </button>
+              {showEmojiPicker && (
+                <div className="absolute bottom-full left-0 mb-2 z-50">
+                  <div className="relative">
+                    <button
+                    title="o"
+                     onClick={() => setShowEmojiPicker(false)} className="absolute -top-2 -right-2 w-6 h-6 bg-gray-800 text-white rounded-full flex items-center justify-center z-10">
+                      <X className="w-3 h-3" />
+                    </button>
+                    <Picker data={data} onEmojiSelect={handleEmojiSelect} theme="light" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            
+            <div className="relative">
+              <button
+                onClick={() => setShowVisibilityMenu(!showVisibilityMenu)}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-gray-500 hover:bg-gray-100 transition text-xs font-medium"
+              >
+                <VisIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">{currentVis.label}</span>
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              {showVisibilityMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowVisibilityMenu(false)} />
+                  <div className="absolute bottom-full left-0 mb-2 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 w-52 z-20">
+                    {visibilityOptions.map(opt => {
+                      const Icon = opt.icon;
                       return (
                         <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => {
-                            setVisibility(option.value);
-                            setShowVisibilityMenu(false);
-                          }}
-                          className={`w-full flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition ${
-                            visibility === option.value ? 'bg-pink-50' : ''
-                          }`}
-                          aria-label={`Set visibility to ${option.label}`}
+                          key={opt.value}
+                          onClick={() => { setVisibility(opt.value); setShowVisibilityMenu(false); }}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition ${visibility === opt.value ? "text-pink-600" : "text-gray-700"}`}
                         >
-                          <Icon className={`w-5 h-5 mt-0.5 ${visibility === option.value ? 'text-pink-600' : 'text-gray-600'}`} />
+                          <Icon className="w-4 h-4 shrink-0" />
                           <div className="text-left">
-                            <p className={`font-semibold ${visibility === option.value ? 'text-pink-600' : 'text-gray-900'}`}>
-                              {option.label}
-                            </p>
-                            <p className="text-xs text-gray-500">{option.description}</p>
+                            <p className="text-sm font-medium leading-tight">{opt.label}</p>
+                            <p className="text-xs text-gray-400">{opt.desc}</p>
                           </div>
                         </button>
                       );
                     })}
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </div>
-
-            <Button
-              onClick={handleSubmit}
-              isLoading={isPosting}
-              disabled={(content.trim() === "" && media.length === 0) || isPosting || isUploading}
-            >
-              Post
-            </Button>
           </div>
+
+         
+          <button
+            onClick={handleSubmit}
+            disabled={(content.trim() === "" && media.length === 0) || isPosting || isUploading}
+            className="px-5 py-2 bg-linear-to-r from-pink-500 to-purple-600 text-white text-sm font-semibold rounded-xl hover:shadow-md hover:shadow-pink-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isPosting ? "Posting..." : "Post"}
+          </button>
         </div>
       </div>
     </div>

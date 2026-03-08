@@ -5,44 +5,33 @@ import toast from 'react-hot-toast';
 import { Post } from '@/app/types';
 import CreatePost from '../components/feed/CreatePost';
 import PostCard from '../components/feed/PostCard';
-import { Loader } from 'lucide-react';
+import {  Sparkles } from 'lucide-react';
+// import Image from 'next/image';
 
 export default function FeedPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string>('');
-  const [userData, setUserData] = useState({
-    profileImage: '',
-    displayName: 'User',
-  });
+  const [userData, setUserData] = useState({ profileImage: '', displayName: 'User' });
 
-  useEffect(() => {
-    initialize();
-  }, []);
+  useEffect(() => { initialize(); }, []);
 
   const initialize = async () => {
     try {
-      // Fetch user data and posts in parallel
       const [userResponse, postsResponse] = await Promise.all([
         fetch('/api/user/me', { credentials: 'include' }),
-        fetch('/api/posts', { credentials: 'include' })
+        fetch('/api/posts', { credentials: 'include' }),
       ]);
-
       if (userResponse.ok) {
-        const userData = await userResponse.json();
-        setCurrentUserId(userData.id);
-        setUserData({
-          profileImage: userData.profile?.profileImage || '',
-          displayName: userData.profile?.displayName || userData.username || 'User',
-        });
+        const d = await userResponse.json();
+        setCurrentUserId(d.id);
+        setUserData({ profileImage: d.profile?.profileImage || '', displayName: d.profile?.displayName || d.username || 'User' });
       }
-
       if (postsResponse.ok) {
-        const postsData = await postsResponse.json();
-        setPosts(postsData.posts || []);
+        const d = await postsResponse.json();
+        setPosts(d.posts || []);
       }
-    } catch (error) {
-      console.error('Failed to initialize feed:', error);
+    } catch {
       toast.error('Failed to load feed');
     } finally {
       setIsLoading(false);
@@ -51,69 +40,69 @@ export default function FeedPage() {
 
   const fetchPosts = async () => {
     try {
-      const response = await fetch('/api/posts', {
-        credentials: 'include',
-      });
-      
+      const response = await fetch('/api/posts', { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         setPosts(data.posts || []);
       }
-    } catch (error) {
-      console.error('Failed to fetch posts:', error);
+    } catch {
+      toast.error('Failed to load posts');
     }
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <Loader className="w-12 h-12 text-pink-500 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading feed...</p>
+          <div className="w-12 h-12 rounded-full bg-linear-to-br from-pink-500 to-purple-600 flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <Sparkles className="w-6 h-6 text-white" />
+          </div>
+          <p className="text-gray-500 text-sm">Loading your feed...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold bg-linear-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
-          Your Feed
-        </h1>
-        <p className="text-gray-600 mt-2">
-          Share your journey and connect with others
-        </p>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
 
-      {/* Create Post */}
-      <div className="mb-6">
-        <CreatePost
-          onPostCreated={fetchPosts}
-          userProfileImage={userData.profileImage}
-          userDisplayName={userData.displayName}
-        />
-      </div>
+       
+        <div className="mb-6">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
+            Your Feed
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">Share your journey and connect with others</p>
+        </div>
 
-      {/* Posts */}
-      <div className="space-y-6">
-        {posts.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-            <p className="text-gray-500">
-              No posts yet. Be the first to share something! 🎉
-            </p>
-          </div>
-        ) : (
-          posts.map((post) => (
-            <PostCard 
-              key={post._id} 
-              post={post} 
-              currentUserId={currentUserId}
-              onUpdate={fetchPosts} 
-            />
-          ))
-        )}
+        
+        <div className="mb-5">
+          <CreatePost
+            onPostCreated={fetchPosts}
+            userProfileImage={userData.profileImage}
+            userDisplayName={userData.displayName}
+          />
+        </div>
+
+        
+        <div className="space-y-4">
+          {posts.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+              <div className="text-4xl mb-3">🎉</div>
+              <p className="font-semibold text-gray-800 mb-1">No posts yet</p>
+              <p className="text-gray-500 text-sm">Be the first to share something!</p>
+            </div>
+          ) : (
+            posts.map((post) => (
+              <PostCard
+                key={post._id}
+                post={post}
+                currentUserId={currentUserId}
+                onUpdate={fetchPosts}
+              />
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
