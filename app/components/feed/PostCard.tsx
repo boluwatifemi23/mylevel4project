@@ -8,6 +8,7 @@ import {
   Trash2, Edit, Globe, Users, Lock, X, AlertTriangle,
 } from "lucide-react";
 import CommentSection from "./CommentSection";
+import FollowButton from "@/app/components/profile/FollowButton";
 import { Post } from "@/app/types";
 import toast from "react-hot-toast";
 
@@ -39,7 +40,6 @@ export default function PostCard({ post, onUpdate, currentUserId }: PostCardProp
     const prevLiked = liked;
     setLiked(!liked);
     setLocalLikes(liked ? localLikes - 1 : localLikes + 1);
-
     try {
       const res = await fetch(`/api/posts/${post._id}/like`, { method: "POST", credentials: "include" });
       if (!res.ok) throw new Error();
@@ -86,22 +86,37 @@ export default function PostCard({ post, onUpdate, currentUserId }: PostCardProp
     } catch {  }
   };
 
+  const images = post.images ?? [];
+  const videos = post.videos ?? [];
+
   return (
     <>
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
 
-       
+        
         <div className="p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+
+         
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 bg-linear-to-br from-pink-400 to-purple-500 rounded-full overflow-hidden flex items-center justify-center shrink-0 ring-2 ring-white shadow-sm">
               {post.authorId.profile.profileImage ? (
-                <Image src={post.authorId.profile.profileImage} alt={post.authorId.profile.displayName} width={40} height={40} className="rounded-full object-cover w-full h-full" />
+                <Image
+                  src={post.authorId.profile.profileImage}
+                  alt={post.authorId.profile.displayName}
+                  width={40}
+                  height={40}
+                  className="rounded-full object-cover w-full h-full"
+                />
               ) : (
-                <span className="text-white font-bold text-sm">{post.authorId.profile.displayName.charAt(0)}</span>
+                <span className="text-white font-bold text-sm">
+                  {post.authorId.profile.displayName.charAt(0)}
+                </span>
               )}
             </div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm leading-tight">{post.authorId.profile.displayName}</p>
+            <div className="min-w-0">
+              <p className="font-semibold text-gray-900 text-sm leading-tight truncate">
+                {post.authorId.profile.displayName}
+              </p>
               <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-0.5 flex-wrap">
                 <span>@{post.authorId.username}</span>
                 <span>·</span>
@@ -112,85 +127,110 @@ export default function PostCard({ post, onUpdate, currentUserId }: PostCardProp
             </div>
           </div>
 
-          {isOwnPost && (
-            <div className="relative">
-              <button
+         
+          <div className="flex items-center gap-2 shrink-0 ml-2">
+            {!isOwnPost && currentUserId && (
+              <FollowButton userId={post.authorId._id} />
+            )}
+
+            {isOwnPost && (
+              <div className="relative">
+                <button
                 title="o"
-                onClick={() => setShowMenu(!showMenu)}
-                className="p-1.5 rounded-full hover:bg-gray-100 transition text-gray-400 hover:text-gray-600"
-              >
-                <MoreVertical className="w-4 h-4" />
-              </button>
-              {showMenu && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                  <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-20 overflow-hidden">
-                    <button
-                      onClick={() => { setShowMenu(false); toast('Edit feature coming soon!', { icon: 'ℹ️' }); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 text-gray-700 text-sm"
-                    >
-                      <Edit className="w-4 h-4 text-gray-400" /> Edit Post
-                    </button>
-                    <button
-                      onClick={() => { setShowMenu(false); setShowDeleteModal(true); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-red-50 text-red-500 text-sm"
-                    >
-                      <Trash2 className="w-4 h-4" /> Delete Post
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="p-1.5 rounded-full hover:bg-gray-100 transition text-gray-400 hover:text-gray-600"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+
+                {showMenu && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                    <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-20 overflow-hidden">
+                      <button
+                        onClick={() => { setShowMenu(false); toast("Edit feature coming soon!", { icon: "ℹ️" }); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 text-gray-700 text-sm"
+                      >
+                        <Edit className="w-4 h-4 text-gray-400" />
+                        Edit Post
+                      </button>
+                      <button
+                        onClick={() => { setShowMenu(false); setShowDeleteModal(true); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-red-50 text-red-500 text-sm"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete Post
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-       
-        {post.content && (
+      
+        {post.content && post.content.trim() && (
           <div className="px-4 pb-3">
-            <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
+            <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">
+              {post.content}
+            </p>
             {post.type === "milestone" && post.milestoneData && (
               <div className="mt-2 inline-flex items-center gap-1.5 bg-linear-to-r from-pink-100 to-purple-100 px-3 py-1.5 rounded-full">
-                <span className="text-xs font-semibold text-pink-600">🎉 {post.milestoneData.category}</span>
+                <span className="text-xs font-semibold text-pink-600">
+                  🎉 {post.milestoneData.category}
+                </span>
               </div>
             )}
           </div>
         )}
 
        
-        {(() => {
-          const images = post.images ?? [];
-          if (images.length === 0) return null;
-          return (
-            <div className={`grid gap-0.5 ${images.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
-              {images.map((image, i) => (
-                <div key={i} className={`relative w-full ${images.length === 1 ? "h-72 sm:h-96" : "h-48"}`}>
-                  <Image src={image} alt={`Post image ${i + 1}`} fill className="object-cover" />
-                </div>
-              ))}
-            </div>
-          );
-        })()}
+        {images.length > 0 && (
+          <div className={`grid gap-0.5 ${images.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+            {images.map((image, i) => (
+              <div key={i} className={`relative w-full bg-gray-50 ${images.length > 1 ? "h-56" : ""}`}>
+                {images.length === 1 ? (
+                  <Image
+                    src={image}
+                    alt={`Post image ${i + 1}`}
+                    width={800}
+                    height={600}
+                    className="w-full h-auto object-contain max-h-[500px]"
+                  />
+                ) : (
+                  <Image
+                    src={image}
+                    alt={`Post image ${i + 1}`}
+                    fill
+                    className="object-cover"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
-        
-        {post.videos && post.videos.length > 0 && (
+      
+        {videos.length > 0 && (
           <div className="space-y-1">
-            {post.videos.map((video, i) => (
+            {videos.map((video, i) => (
               <video key={i} src={video} controls preload="metadata" className="w-full max-h-80 bg-black" />
             ))}
           </div>
         )}
 
-        
+       
         <div className="px-4 py-2 flex items-center justify-between text-xs text-gray-400 border-t border-gray-50">
           <button onClick={handleLike} className="hover:text-gray-600 transition">
-            {localLikes} {localLikes === 1 ? 'like' : 'likes'}
+            {localLikes} {localLikes === 1 ? "like" : "likes"}
           </button>
           <button onClick={() => setShowComments(!showComments)} className="hover:text-gray-600 transition">
-            {localComments} {localComments === 1 ? 'comment' : 'comments'}
+            {localComments} {localComments === 1 ? "comment" : "comments"}
           </button>
         </div>
 
-        
+       
         <div className="px-2 py-1 border-t border-gray-50 grid grid-cols-3">
           <button
             onClick={handleLike}
@@ -237,14 +277,19 @@ export default function PostCard({ post, onUpdate, currentUserId }: PostCardProp
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteModal(false)} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 z-10">
             <button
-            title="o" onClick={() => setShowDeleteModal(false)} className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 text-gray-400">
+            title="o"
+              onClick={() => setShowDeleteModal(false)}
+              className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 text-gray-400"
+            >
               <X className="w-4 h-4" />
             </button>
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="w-6 h-6 text-red-500" />
             </div>
             <h3 className="text-lg font-bold text-gray-900 text-center mb-2">Delete Post?</h3>
-            <p className="text-gray-500 text-sm text-center mb-6">This action cannot be undone. Your post will be permanently removed.</p>
+            <p className="text-gray-500 text-sm text-center mb-6">
+              This action cannot be undone. Your post will be permanently removed.
+            </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteModal(false)}

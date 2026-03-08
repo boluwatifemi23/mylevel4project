@@ -30,95 +30,79 @@ interface ProfileHeaderProps {
   currentUserId?: string;
 }
 
-export default function ProfileHeader({
-  user,
-  isOwnProfile,
-  currentUserId,
-}: ProfileHeaderProps) {
+export default function ProfileHeader({ user, isOwnProfile, currentUserId }: ProfileHeaderProps) {
   const [showEditModal, setShowEditModal] = useState(false);
   const router = useRouter();
 
-  const handleUpdate = () => {
-    router.refresh();
-  };
-
   return (
     <>
-      <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-        {/* Cover Image */}
-        <div className="h-48 bg-linear-to-r from-pink-400 via-purple-400 to-blue-400 relative">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        
+        <div className="h-40 sm:h-52 bg-linear-to-r from-pink-400 via-purple-400 to-blue-400 relative">
           {isOwnProfile && (
-            <button
-              className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-gray-700 px-4 py-2 rounded-full font-semibold hover:bg-white transition"
-            >
+            <button className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm text-gray-700 text-sm px-3 py-1.5 rounded-full font-medium hover:bg-white transition shadow-sm">
               Change Cover
             </button>
           )}
         </div>
 
-        {/* Profile Info */}
-        <div className="px-6 pb-6">
-          <div className="flex items-end justify-between -mt-16 mb-4">
-            {/* Profile Picture */}
-            <div className="relative">
-              <div className="w-32 h-32 rounded-full border-4 border-white overflow-hidden bg-linear-to-br from-pink-400 to-purple-400 flex items-center justify-center">
-                {user.profile.profileImage ? (
-                  <Image
-                    src={user.profile.profileImage}
-                    alt={user.profile.displayName}
-                    width={128}
-                    height={128}
-                    className="rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="text-white text-4xl font-bold">
-                    {user.profile.displayName.charAt(0)}
-                  </span>
-                )}
-              </div>
+       
+        <div className="px-4 sm:px-6 pb-5">
+          <div className="flex items-end justify-between -mt-12 mb-4">
+           
+            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white overflow-hidden bg-linear-to-br from-pink-400 to-purple-500 flex items-center justify-center shadow-md shrink-0">
+              {user.profile.profileImage ? (
+                <Image
+                  src={user.profile.profileImage}
+                  alt={user.profile.displayName}
+                  width={112}
+                  height={112}
+                  className="rounded-full object-cover w-full h-full"
+                />
+              ) : (
+                <span className="text-white text-3xl font-bold">
+                  {user.profile.displayName.charAt(0)}
+                </span>
+              )}
             </div>
 
-            {/* Follow/Edit Button */}
-            {!isOwnProfile && currentUserId && (
-              <FollowButton userId={user.id} />
-            )}
-            {isOwnProfile && (
-              <button
-                onClick={() => setShowEditModal(true)}
-                className="px-6 py-2 border-2 border-gray-300 rounded-full font-semibold hover:bg-gray-50 transition"
-              >
-                Edit Profile
-              </button>
-            )}
+          
+            <div className="mb-1">
+              {!isOwnProfile && currentUserId ? (
+                <FollowButton userId={user.id} />
+              ) : isOwnProfile ? (
+                <button
+                  onClick={() => setShowEditModal(true)}
+                  className="px-5 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
+                >
+                  Edit Profile
+                </button>
+              ) : null}
+            </div>
           </div>
 
-          {/* User Info */}
-          <div className="space-y-3">
-            {/* Name & Username */}
+       
+          <div className="space-y-2">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                {user.profile.displayName}
-              </h1>
-              <p className="text-gray-500">@{user.username}</p>
+              <h1 className="text-2xl font-extrabold text-gray-900">{user.profile.displayName}</h1>
+              <p className="text-gray-500 text-sm">@{user.username}</p>
             </div>
 
-            {/* Bio */}
             {user.profile.bio && (
-              <p className="text-gray-700">{user.profile.bio}</p>
+              <p className="text-gray-700 text-sm leading-relaxed">{user.profile.bio}</p>
             )}
 
-            {/* Location + Joined Date */}
-            <div className="flex items-center space-x-4 text-sm text-gray-600">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500">
               {user.profile.location && (
-                <div className="flex items-center space-x-1">
-                  <MapPin className="w-4 h-4" />
-                  <span>{user.profile.location}</span>
-                </div>
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5" />
+                  {user.profile.location}
+                </span>
               )}
-              <div className="flex items-center space-x-1">
-                <Calendar className="w-4 h-4" />
-                <span>Joined {format(new Date(user.createdAt), 'MMMM yyyy')}</span>
-              </div>
+              <span className="flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5" />
+                Joined {format(new Date(user.createdAt), 'MMMM yyyy')}
+              </span>
             </div>
 
             <UserStats stats={user.stats} username={user.username} />
@@ -130,7 +114,7 @@ export default function ProfileHeader({
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         user={user}
-        onUpdate={handleUpdate}
+        onUpdate={() => router.refresh()}
       />
     </>
   );

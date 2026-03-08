@@ -1,48 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Heart } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface LikeButtonProps {
   postId: string;
   initialLikes: number;
-  onLikeChange?: (newLikes: number) => void;
+  initialLiked?: boolean;
+  onLikeChange?: (newLikes: number, liked: boolean) => void;
 }
 
-export default function LikeButton({
-  postId,
-  initialLikes,
-  onLikeChange,
-}: LikeButtonProps) {
-  const [liked, setLiked] = useState(false);
+export default function LikeButton({ postId, initialLikes, initialLiked = false, onLikeChange }: LikeButtonProps) {
+  const [liked, setLiked] = useState(initialLiked);
   const [likes, setLikes] = useState(initialLikes);
   const [isLoading, setIsLoading] = useState(false);
 
+  
+  useEffect(() => {
+    setLiked(initialLiked);
+    setLikes(initialLikes);
+  }, [initialLiked, initialLikes]);
+
   const handleLike = async () => {
+    if (isLoading) return;
     setIsLoading(true);
 
+    
+    const newLiked = !liked;
+    const newLikes = newLiked ? likes + 1 : likes - 1;
+    setLiked(newLiked);
+    setLikes(newLikes);
+
     try {
-      const response = await fetch(`/api/posts/${postId}/like`, {
+      const res = await fetch(`/api/posts/${postId}/like`, {
         method: "POST",
-        credentials: "include", 
-        headers: { Accept: "application/json" },
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
       });
 
-      if (!response.ok) {
-       const errText = await response.text();
-    throw new Error(`Failed to like post: ${response.status} ${errText}`);
-      }
+      if (!res.ok) throw new Error();
 
-      const data = await response.json();
-
+      const data = await res.json();
       setLiked(data.liked);
       setLikes(data.likes);
-
-      if (onLikeChange) {
-        onLikeChange(data.likes);
-      }
-    } catch{
+      onLikeChange?.(data.likes, data.liked);
+    } catch {
+      // Revert
+      setLiked(liked);
+      setLikes(likes);
       toast.error("Failed to like post");
     } finally {
       setIsLoading(false);
@@ -53,12 +59,13 @@ export default function LikeButton({
     <button
       onClick={handleLike}
       disabled={isLoading}
-      className={`flex items-center space-x-2 transition ${
-        liked ? "text-red-500" : "text-gray-600 hover:text-red-500"
+      className={`flex items-center gap-1.5 transition-colors ${
+        liked ? "text-pink-500" : "text-gray-500 hover:text-pink-500"
       }`}
+      aria-label={liked ? "Unlike post" : "Like post"}
     >
-      <Heart className={`w-5 h-5 ${liked ? "fill-current" : ""}`} />
-      <span>{likes}</span>
+      <Heart className={`w-5 h-5 transition-transform active:scale-125 ${liked ? "fill-current" : ""}`} />
+      <span className="text-sm font-medium">{likes}</span>
     </button>
   );
 }

@@ -12,32 +12,22 @@ import Link from "next/link";
 type PopulatedAuthor = {
   _id: Types.ObjectId;
   username: string;
-  profile: {
-    displayName: string;
-    profileImage?: string;
-  };
+  profile: { displayName: string; profileImage?: string };
 };
 
-export default async function ProfilePage({ 
-  params 
-}: { 
-  params: Promise<{ username: string }> 
+export default async function ProfilePage({
+  params,
+}: {
+  params: Promise<{ username: string }>;
 }) {
   const { username } = await params;
-  
   await connectDB();
 
-  const profileUser = await User.findOne({ username })
-    .select("-password")
-    .lean();
-
-  if (!profileUser) {
-    notFound();
-  }
+  const profileUser = await User.findOne({ username }).select("-password").lean();
+  if (!profileUser) notFound();
 
   const session = await getSession();
-const currentUserId = session?.userId;
-
+  const currentUserId = session?.userId;
   const isOwnProfile = currentUserId === profileUser._id.toString();
 
   const userPosts = await PostModel.find({ authorId: profileUser._id })
@@ -47,7 +37,6 @@ const currentUserId = session?.userId;
 
   const cleanedPosts: Post[] = userPosts.map((post) => {
     const author = post.authorId as unknown as PopulatedAuthor;
-
     return {
       ...post,
       _id: post._id.toString(),
@@ -78,42 +67,47 @@ const currentUserId = session?.userId;
   });
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-      <ProfileHeader
-        user={{
-          id: profileUser._id.toString(),
-          username: profileUser.username,
-          profile: profileUser.profile,
-          stats: profileUser.stats,
-          createdAt: profileUser.createdAt.toISOString(),
-        }}
-        isOwnProfile={isOwnProfile}
-        currentUserId={currentUserId}
-      />
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8 space-y-5">
+        <ProfileHeader
+          user={{
+            id: profileUser._id.toString(),
+            username: profileUser.username,
+            profile: profileUser.profile,
+            stats: profileUser.stats,
+            createdAt: profileUser.createdAt.toISOString(),
+          }}
+          isOwnProfile={isOwnProfile}
+          currentUserId={currentUserId}
+        />
 
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-900">Posts</h2>
-        {cleanedPosts.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-            <p className="text-gray-500">No posts yet</p>
-            {isOwnProfile && (
-              <Link 
-                href="/feed"
-                className="inline-block mt-4 px-6 py-3 bg-linear-to-r from-pink-500 to-purple-600 text-white rounded-full font-semibold hover:shadow-lg transition"
-              >
-                Create Your First Post
-              </Link>
-            )}
-          </div>
-        ) : (
-          cleanedPosts.map((post) => (
-            <PostCard 
-              key={post._id} 
-              post={post} 
-              currentUserId={currentUserId}
-            />
-          ))
-        )}
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Posts</h2>
+          {cleanedPosts.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+              <div className="text-4xl mb-3">📝</div>
+              <p className="font-semibold text-gray-800 mb-1">No posts yet</p>
+              {isOwnProfile && (
+                <Link
+                  href="/feed"
+                  className="inline-block mt-3 px-5 py-2.5 bg-linear-to-r from-pink-500 to-purple-600 text-white rounded-xl text-sm font-semibold hover:shadow-md transition"
+                >
+                  Create Your First Post
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {cleanedPosts.map((post) => (
+                <PostCard
+                  key={post._id}
+                  post={post}
+                  currentUserId={currentUserId}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

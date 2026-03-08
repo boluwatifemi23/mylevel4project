@@ -83,7 +83,7 @@ export default function CreatePost({ onPostCreated, userProfileImage, userDispla
   };
 
   const handleSubmit = async () => {
-    if (!content.trim() && media.length === 0) { toast.error("Add some content or media"); return; }
+    if (!content.trim() && media.length === 0) { toast.error("Add a photo, video, or write something"); return; }
     setIsPosting(true);
     const t = toast.loading("Creating post...");
     try {
@@ -92,7 +92,7 @@ export default function CreatePost({ onPostCreated, userProfileImage, userDispla
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          content,
+          content: content.trim() || " ",
           images: media.filter(m => m.type === "image").map(m => m.url),
           videos: media.filter(m => m.type === "video").map(m => m.url),
           type: "update",
@@ -116,7 +116,7 @@ export default function CreatePost({ onPostCreated, userProfileImage, userDispla
     <div className={`bg-white rounded-2xl border transition-all duration-200 ${focused ? "border-pink-200 shadow-md" : "border-gray-100 shadow-sm"}`}>
       <div className="p-4">
         <div className="flex items-start gap-3">
-         
+          
           <div className="w-9 h-9 bg-linear-to-br from-pink-400 to-purple-500 rounded-full overflow-hidden shrink-0 flex items-center justify-center ring-2 ring-white shadow-sm">
             {userProfileImage ? (
               <Image src={userProfileImage} alt={userDisplayName} width={36} height={36} className="rounded-full object-cover w-full h-full" />
@@ -139,15 +139,15 @@ export default function CreatePost({ onPostCreated, userProfileImage, userDispla
           </div>
         </div>
 
-        {/* Media preview */}
+        
         {media.length > 0 && (
           <div className={`grid gap-1.5 mt-3 ${media.length === 1 ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3"}`}>
             {media.map((item, i) => (
               <div key={i} className="relative group rounded-xl overflow-hidden bg-gray-100">
                 {item.type === "image" ? (
-                  <Image src={item.url} alt={`Upload ${i + 1}`} width={300} height={200} className="w-full h-28 object-cover" />
+                  <Image src={item.url} alt={`Upload ${i + 1}`} width={300} height={200} className="w-full h-40 object-contain bg-gray-50" />
                 ) : (
-                  <video src={item.url} className="w-full h-28 object-cover" controls />
+                  <video src={item.url} className="w-full h-40 object-contain bg-black" controls />
                 )}
                 <button
                 title="o"
@@ -161,10 +161,10 @@ export default function CreatePost({ onPostCreated, userProfileImage, userDispla
           </div>
         )}
 
-        
+       
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
           <div className="flex items-center gap-1">
-            
+           
             <input
             title="o"
              ref={imageInputRef} type="file" accept="image/*" multiple onChange={e => handleMediaUpload(e, "image")} className="hidden" />
@@ -190,7 +190,7 @@ export default function CreatePost({ onPostCreated, userProfileImage, userDispla
               <VideoIcon className="w-5 h-5" />
             </button>
 
-           
+            
             <div className="relative">
               <button
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -202,9 +202,9 @@ export default function CreatePost({ onPostCreated, userProfileImage, userDispla
               {showEmojiPicker && (
                 <div className="absolute bottom-full left-0 mb-2 z-50">
                   <div className="relative">
-                    <button
+                    <button 
                     title="o"
-                     onClick={() => setShowEmojiPicker(false)} className="absolute -top-2 -right-2 w-6 h-6 bg-gray-800 text-white rounded-full flex items-center justify-center z-10">
+                    onClick={() => setShowEmojiPicker(false)} className="absolute -top-2 -right-2 w-6 h-6 bg-gray-800 text-white rounded-full flex items-center justify-center z-10">
                       <X className="w-3 h-3" />
                     </button>
                     <Picker data={data} onEmojiSelect={handleEmojiSelect} theme="light" />
@@ -213,7 +213,7 @@ export default function CreatePost({ onPostCreated, userProfileImage, userDispla
               )}
             </div>
 
-            
+         
             <div className="relative">
               <button
                 onClick={() => setShowVisibilityMenu(!showVisibilityMenu)}
@@ -249,7 +249,7 @@ export default function CreatePost({ onPostCreated, userProfileImage, userDispla
             </div>
           </div>
 
-         
+          
           <button
             onClick={handleSubmit}
             disabled={(content.trim() === "" && media.length === 0) || isPosting || isUploading}
